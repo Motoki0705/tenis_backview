@@ -1,0 +1,10 @@
+model: outputs/train/player/test_run_player/weights/best.pt
+video: data/sample.mp4
+output: outputs/visualize/sample_overlay.mp4
+conf: 0.25
+device: null
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null

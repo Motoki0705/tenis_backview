@@ -6,7 +6,6 @@ from pathlib import Path
 
 import cv2
 import kagglehub
-import numpy as np
 import pandas as pd
 from ultralytics import YOLO
 
@@ -16,8 +15,10 @@ from tenis_backview.data.type import BoundingBox, Point2D
 
 @dataclass(slots=True)
 class BuildSummary:
-    images_written: int
-    labels_written: int
+    player_images_written: int
+    player_labels_written: int
+    ball_images_written: int
+    ball_labels_written: int
     output_dir: str
 
 
@@ -124,14 +125,21 @@ def build_tenis_backview_yolo_dataset(config: BuildDatasetConfig) -> BuildSummar
     dataset_root = _download_dataset(config.dataset_dir, config.dataset_ref)
     output_root = config.output_dir
 
+    player_root = output_root / "player"
+    ball_root = output_root / "ball"
+
     for split in ("train", "val", "test"):
-        (output_root / "images" / split).mkdir(parents=True, exist_ok=True)
-        (output_root / "labels" / split).mkdir(parents=True, exist_ok=True)
+        (player_root / "images" / split).mkdir(parents=True, exist_ok=True)
+        (player_root / "labels" / split).mkdir(parents=True, exist_ok=True)
+        (ball_root / "images" / split).mkdir(parents=True, exist_ok=True)
+        (ball_root / "labels" / split).mkdir(parents=True, exist_ok=True)
 
     person_detector = YOLO(str(config.person_detector_model))
 
-    images_written = 0
-    labels_written = 0
+    player_images_written = 0
+    player_labels_written = 0
+    ball_images_written = 0
+    ball_labels_written = 0
 
     video_files = sorted(dataset_root.glob("video*.mp4"))
     for video_path in video_files:
@@ -173,7 +181,8 @@ def build_tenis_backview_yolo_dataset(config: BuildDatasetConfig) -> BuildSummar
                     x1, y1, x2, y2 = box.xyxy[0].tolist()
                     person_boxes.append(BoundingBox(float(x1), float(y1), float(x2), float(y2)))
 
-            labels: list[str] = []
+            player_labels: list[str] = []
+            ball_labels: list[str] = []
 
             for player_center in player_points.get(frame_index, []):
                 matched = _choose_player_bbox(
@@ -182,37 +191,59 @@ def build_tenis_backview_yolo_dataset(config: BuildDatasetConfig) -> BuildSummar
                     max_distance_px=config.max_player_match_distance_px,
                 )
                 if matched is not None:
-                    labels.append(_to_yolo_line(0, matched, width, height))
+                    player_labels.append(_to_yolo_line(0, matched, width, height))
 
             ball_center = ball_points.get(frame_index)
             if ball_center is not None:
                 ball_box = _ball_box(ball_center, config.ball_box_size_px, width, height)
-                labels.append(_to_yolo_line(1, ball_box, width, height))
+                ball_labels.append(_to_yolo_line(0, ball_box, width, height))
 
             frame_name = f"{base_name}_frame_{frame_index:06d}"
-            image_path = output_root / "images" / split / f"{frame_name}.jpg"
-            label_path = output_root / "labels" / split / f"{frame_name}.txt"
 
-            cv2.imwrite(str(image_path), frame)
-            label_path.write_text("\n".join(labels), encoding="utf-8")
-            images_written += 1
-            labels_written += 1
+            player_image_path = player_root / "images" / split / f"{frame_name}.jpg"
+            player_label_path = player_root / "labels" / split / f"{frame_name}.txt"
+            cv2.imwrite(str(player_image_path), frame)
+            player_label_path.write_text("\n".join(player_labels), encoding="utf-8")
+            player_images_written += 1
+            player_labels_written += 1
+
+            ball_image_path = ball_root / "images" / split / f"{frame_name}.jpg"
+            ball_label_path = ball_root / "labels" / split / f"{frame_name}.txt"
+            cv2.imwrite(str(ball_image_path), frame)
+            ball_label_path.write_text("\n".join(ball_labels), encoding="utf-8")
+            ball_images_written += 1
+            ball_labels_written += 1
 
             frame_index += 1
 
         cap.release()
 
-    yaml_path = output_root / "dataset.yaml"
-    yaml_path.write_text(
+    player_yaml = player_root / "dataset.yaml"
+    player_yaml.write_text(
         "\n".join(
             [
-                f"path: {output_root.resolve()}",
+                f"path: {player_root.resolve()}",
                 "train: images/train",
                 "val: images/val",
                 "test: images/test",
                 "names:",
                 "  0: player",
-                "  1: ball",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    ball_yaml = ball_root / "dataset.yaml"
+    ball_yaml.write_text(
+        "\n".join(
+            [
+                f"path: {ball_root.resolve()}",
+                "train: images/train",
+                "val: images/val",
+                "test: images/test",
+                "names:",
+                "  0: ball",
             ]
         )
         + "\n",
@@ -220,7 +251,9 @@ def build_tenis_backview_yolo_dataset(config: BuildDatasetConfig) -> BuildSummar
     )
 
     return BuildSummary(
-        images_written=images_written,
-        labels_written=labels_written,
+        player_images_written=player_images_written,
+        player_labels_written=player_labels_written,
+        ball_images_written=ball_images_written,
+        ball_labels_written=ball_labels_written,
         output_dir=str(output_root),
     )

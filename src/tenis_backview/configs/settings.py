@@ -18,12 +18,13 @@ class BuildDatasetConfig:
 @dataclass(slots=True)
 class TrainConfig:
     base_model: str = "yolo11n.pt"
-    data_yaml: Path = Path("data/tenis-backview/yolo/dataset.yaml")
+    data_yaml: Path = Path("data/tenis-backview/yolo/player/dataset.yaml")
     output_dir: Path = Path("outputs/train")
-    run_name: str = "player_ball_finetune"
+    run_name: str = "player_finetune"
     epochs: int = 30
     batch: int = 16
     imgsz: int = 960
+    fraction: float = 1.0
     device: str | None = None
     workers: int = 4
     seed: int = 42

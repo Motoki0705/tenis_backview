@@ -1,0 +1,12 @@
+dataset_ref: gastonarielfrancois/tenis-backview
+dataset_dir: data/tenis-backview
+output_dir: data/tenis-backview/yolo
+person_model: checkpoints/player/model.pt
+frame_stride: 1
+ball_box_size: 14
+max_player_match_distance: 160.0
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null

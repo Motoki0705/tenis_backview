@@ -1,29 +1,21 @@
 from __future__ import annotations
 
-import argparse
 from pathlib import Path
+
+import hydra
+from omegaconf import DictConfig
 
 from tenis_backview.visualization.overlay import visualize_video_with_yolo
 
 
-def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="推論結果を動画へオーバーレイして可視化")
-    parser.add_argument("--model", type=Path, required=True)
-    parser.add_argument("--video", type=Path, default=Path("data/sample.mp4"))
-    parser.add_argument("--output", type=Path, default=Path("outputs/visualize/sample_overlay.mp4"))
-    parser.add_argument("--conf", type=float, default=0.25)
-    parser.add_argument("--device", type=str, default=None)
-    return parser
-
-
-def main() -> None:
-    args = build_parser().parse_args()
+@hydra.main(version_base=None, config_path="../configs", config_name="visualize")
+def main(cfg: DictConfig) -> None:
     output = visualize_video_with_yolo(
-        model_path=args.model,
-        input_video=args.video,
-        output_video=args.output,
-        conf=args.conf,
-        device=args.device,
+        model_path=Path(cfg.model),
+        input_video=Path(cfg.video),
+        output_video=Path(cfg.output),
+        conf=float(cfg.conf),
+        device=cfg.device,
     )
     print(f"saved: {output}")
 

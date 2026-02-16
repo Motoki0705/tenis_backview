@@ -4,7 +4,7 @@
 
 ## 目的
 
-- クラスは `player` と `ball` のみで学習
+- `player` と `ball` を別々のモデルとして学習
 - `ball` はデータセットの中心点から擬似BBoxを作成
 - `player` はデータセットの中心点に対し、YOLO人物検出BBoxの中から対応BBoxを選んで教師信号化
 
@@ -47,53 +47,63 @@ path = kagglehub.dataset_download("gastonarielfrancois/tenis-backview")
 print("Path to dataset files:", path)
 ```
 
-CLIで生成する場合:
+Hydra設定を使って生成する場合:
 
 ```bash
-uv run tenis-backview-prepare-dataset \
-	--dataset-ref gastonarielfrancois/tenis-backview \
-	--dataset-dir data/tenis-backview \
-	--output-dir data/tenis-backview/yolo \
-	--person-model checkpoints/player/model.pt
+uv run tenis-backview-prepare-dataset
+```
+
+上書き例:
+
+```bash
+uv run tenis-backview-prepare-dataset frame_stride=2
 ```
 
 生成物:
 
-- `data/tenis-backview/yolo/images/{train,val,test}`
-- `data/tenis-backview/yolo/labels/{train,val,test}`
-- `data/tenis-backview/yolo/dataset.yaml`
+- `data/tenis-backview/yolo/player/{images,labels,...}`
+- `data/tenis-backview/yolo/ball/{images,labels,...}`
+- `data/tenis-backview/yolo/player/dataset.yaml`
+- `data/tenis-backview/yolo/ball/dataset.yaml`
 
-## 2. 学習
+## 2. 学習（別々に実行）
+
+### プレイヤー学習
 
 ```bash
-uv run tenis-backview \
-	--prepare-dataset \
-	--dataset-ref gastonarielfrancois/tenis-backview \
-	--dataset-dir data/tenis-backview \
-	--data-yolo-dir data/tenis-backview/yolo \
-	--person-model checkpoints/player/model.pt \
-	--base-model yolo11n.pt \
-	--epochs 30 \
-	--batch 16 \
-	--imgsz 960 \
-	--output-dir outputs/train \
-	--run-name player_ball_finetune
+uv run tenis-backview --config-name train_player
 ```
+
+### ボール学習（ベースモデル: `checkpoints/ball/model.pt`）
+
+```bash
+uv run tenis-backview --config-name train_ball
+```
+
+設定は以下で管理します。
+
+- `src/tenis_backview/configs/train_player.yaml`
+- `src/tenis_backview/configs/train_ball.yaml`
 
 重み出力例:
 
-- `outputs/train/player_ball_finetune/weights/best.pt`
+- `outputs/train/player/test_run_player/weights/best.pt`
+- `outputs/train/ball/test_run_ball/weights/best.pt`
 
 ## 3. 可視化
 
 ```bash
-uv run tenis-backview-visualize \
-	--model outputs/train/player_ball_finetune/weights/best.pt \
-	--video data/sample.mp4 \
-	--output outputs/visualize/sample_overlay.mp4
+uv run tenis-backview-visualize
+```
+
+上書き例:
+
+```bash
+uv run tenis-backview-visualize model=outputs/train/ball/test_run_ball/weights/best.pt
 ```
 
 ## 補足
 
 - `outputs/` と `checkpoints/` は Git 管理対象外です。
 - `training/lightning.py` は Lightning を学習環境として利用し、実学習は Ultralytics YOLO の学習APIを呼び出します。
+- 学習時にはバッチ損失をトレースし、`first_batch_loss` と `last_batch_loss` を出力します。

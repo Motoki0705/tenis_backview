@@ -15,3 +15,8 @@ checkpoints/
 
 # Downloaded/generated datasets
 data/tenis-backview/
+
+# Local temporary files
+*.log
+*.Zone.Identifier
+yolo26n.pt
