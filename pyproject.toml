@@ -1,0 +1,26 @@
+[project]
+name = "tenis-backview"
+version = "0.1.0"
+description = "Tennis video analyzer for player and ball position extraction"
+readme = "README.md"
+authors = [
+    { name = "Motoki0705", email = "kamimura098@gmail.com" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "dill>=0.4.1",
+    "kagglehub>=1.0.0",
+    "lightning>=2.6.1",
+    "opencv-python>=4.13.0.92",
+    "pandas>=3.0.0",
+    "ultralytics>=8.4.14",
+]
+
+[project.scripts]
+tenis-backview = "tenis_backview.scripts.train:main"
+tenis-backview-prepare-dataset = "tenis_backview.scripts.prepare_dataset:main"
+tenis-backview-visualize = "tenis_backview.scripts.visualize:main"
+
+[build-system]
+requires = ["uv_build>=0.9.5,<0.10.0"]
+build-backend = "uv_build"
